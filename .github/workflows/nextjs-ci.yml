@@ -1,0 +1,66 @@
+name: Next.js 16 CI (Lint, Auto-Repair, and Build)
+
+on:
+  push:
+    branches: [ "main", "master", "develop" ]
+  pull_request:
+    branches: [ "main", "master", "develop" ]
+
+# Grants write permission to write and commit formatting/lint repairs back to your branch
+permissions:
+  contents: write
+
+jobs:
+  ci-build:
+    name: Lint, Repair, and Build
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+        with:
+          # Set fetch-depth to 0 so the auto-commit action has full git history
+          fetch-depth: 0
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22 # Next.js 16 fully supports Node.js 20/22 LTS environments
+          cache: 'npm'     # Automatically caches node_modules dependencies
+
+      - name: Install Dependencies
+        run: npm ci
+
+      # Step 1: Attempt to automatically repair standard code format/lint errors
+      - name: Run Auto-Repair (Format & Lint Fix)
+        run: |
+          npx prettier --write "src/**/*.{js,jsx,ts,tsx,json,css,scss,md}" || true
+          npx next lint --fix || true
+
+      # Step 2: Push repaired changes back to the origin branch (PR or Commit)
+      - name: Commit & Push Repaired Code
+        uses: stefanzweifel/git-auto-commit-action@v5
+        with:
+          commit_message: "style(ci): auto-repair lint and formatting issues"
+          file_pattern: 'src/**/*.js src/**/*.jsx src/**/*.ts src/**/*.tsx src/**/*.json src/**/*.css src/**/*.scss'
+
+      # Step 3: Run a strict validation check. If errors persist, the build fails here.
+      - name: Strict Lint Check
+        run: npx next lint
+
+      # Step 4: Restore and Cache Next.js build directories (Crucial for Turbopack speed)
+      - name: Restore Next.js cache
+        uses: actions/cache@v4
+        with:
+          path: |
+            ${{ github.workspace }}/.next/cache
+          # Generate a new cache key when lockfiles or project files change
+          key: ${{ runner.os }}-nextjs-${{ hashFiles('**/package-lock.json') }}-${{ hashFiles('**/*.js', '**/*.jsx', '**/*.ts', '**/*.tsx') }}
+          restore-keys: |
+            ${{ runner.os }}-nextjs-${{ hashFiles('**/package-lock.json') }}-
+
+      # Step 5: Execute production build
+      - name: Build Next.js 16 Application
+        run: npm run build
+        env:
+          NEXT_TELEMETRY_DISABLED: 1 # Speeds up build setup and respects privacy
