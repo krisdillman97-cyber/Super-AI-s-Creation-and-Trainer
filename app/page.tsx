@@ -1,8 +1,91 @@
 "use client";
 
-import React, { useState, useEffect } from 'react';
-import { Settings, Box, Database, LayoutTemplate, Activity, Plus, Play, Cpu, Layers, UploadCloud, ShieldAlert, ArrowLeft, StopCircle, PauseCircle, Users, GitBranch, Code, Copy, CheckCircle2, Download, Search, RefreshCw, MessageSquare, History, Terminal, Key, ChevronLeft, ChevronRight, GitMerge, GitPullRequest, GitCommit, FileCode, Server, ListFilter, File, FileText, CheckSquare, FileSpreadsheet, StickyNote, FolderOpen, ClipboardList, ToggleRight, ToggleLeft, Flame, ExternalLink, BarChart3, Cloud, LineChart as LineChartIcon, CreditCard, Lock, HelpCircle } from 'lucide-react';
+import React, { useState, useEffect, useMemo } from 'react';
+// ...imports
+import { Menu, X, Settings, Box, Database, LayoutTemplate, Activity, Plus, Play, Cpu, Layers, UploadCloud, ShieldAlert, ArrowLeft, StopCircle, PauseCircle, Users, GitBranch, Code, Copy, CheckCircle2, Download, Search, RefreshCw, MessageSquare, History, Terminal, Key, ChevronLeft, ChevronRight, GitMerge, GitPullRequest, GitCommit, FileCode, Server, ListFilter, File, FileText, CheckSquare, FileSpreadsheet, StickyNote, FolderOpen, ClipboardList, ToggleRight, ToggleLeft, Flame, ExternalLink, BarChart3, Cloud, LineChart as LineChartIcon, CreditCard, Lock, HelpCircle, Store, Star, StarHalf } from 'lucide-react';
 import { LineChart, Line, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts';
+
+function SubscriptionConfirmationModal({ isOpen, item, onConfirm, isLoading, error, onCancel }: any) {
+  if (!isOpen) return null;
+  return (
+    <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
+      <div className="bg-slate-900 border border-slate-800 rounded-lg p-6 max-w-sm w-full shadow-2xl">
+        <h2 className="text-lg font-bold text-white mb-2">Confirm Subscription</h2>
+        <p className="text-sm text-slate-400 mb-6 font-mono leading-relaxed">
+          You are about to subscribe to the <strong className="text-white">{item?.name}</strong> plan for {item?.pricing}. Your payment method on file will be charged automatically.
+        </p>
+        
+        {error && (
+          <div className="bg-red-500/10 border border-red-500/30 text-red-400 text-xs p-3 rounded mb-4 font-mono">
+            {error}
+          </div>
+        )}
+
+        <div className="flex justify-end gap-3 pt-4 border-t border-slate-800 relative z-10">
+          <button 
+            disabled={isLoading}
+            onClick={onCancel} 
+            className="px-4 py-2 hover:bg-slate-800 text-slate-400 rounded text-xs font-bold transition-colors disabled:opacity-50"
+          >
+            Cancel
+          </button>
+          <button 
+            disabled={isLoading}
+            onClick={onConfirm} 
+            className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 disabled:bg-emerald-800 disabled:text-emerald-400/50 text-white rounded text-xs font-bold uppercase tracking-widest transition-colors flex items-center"
+          >
+            {isLoading ? <><RefreshCw className="w-3 h-3 mr-2 animate-spin" /> Processing...</> : 'Confirm Payment'}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function SubscriptionCard({ 
+  id, name, description, icon: Icon, colorIcon, priceObj, 
+  isSubscribed, isPackage,
+  onSubscribeClick 
+}: any) {
+  return (
+    <div className="bg-slate-900 border border-slate-800 rounded-lg p-6 flex flex-col items-center text-center hover:border-slate-700 transition">
+      <div className={`w-12 h-12 ${colorIcon.bg} rounded-full flex items-center justify-center border ${colorIcon.border} mb-4`}>
+        <Icon className={`w-6 h-6 ${colorIcon.text}`} />
+      </div>
+      <h4 className="text-lg font-bold text-slate-200">{name}</h4>
+      <p className="text-xs text-slate-500 font-mono mt-1 mb-6 flex-1">{description}</p>
+      
+      <div className="space-y-3 w-full mt-auto">
+        <button 
+          onClick={() => { if (!isSubscribed) onSubscribeClick(); }}
+          className={`w-full ${isPackage ? 'py-3 text-sm' : 'py-2 text-xs'} rounded font-bold uppercase tracking-widest transition-colors border ${
+            isSubscribed 
+              ? `${colorIcon.bg} ${colorIcon.text} ${colorIcon.border}` 
+              : isPackage 
+                ? `${colorIcon.bgActive} text-white hover:brightness-110` 
+                : 'bg-slate-800 hover:bg-slate-700 text-slate-300 border-slate-700'
+          }`}
+        >
+          {isSubscribed ? 'Active (Monthly)' : priceObj.monthly}
+        </button>
+        <button 
+          className="w-full py-2 rounded text-xs font-bold transition-colors border bg-slate-950 hover:bg-slate-900 text-slate-400 border-slate-800 disabled:opacity-50" 
+          disabled={isSubscribed}
+        >
+          {priceObj.weekly}
+        </button>
+        {priceObj.daily && (
+          <button 
+            className="w-full py-2 rounded text-xs font-bold transition-colors border bg-slate-950 hover:bg-slate-900 text-slate-400 border-slate-800 disabled:opacity-50" 
+            disabled={isSubscribed}
+          >
+            {priceObj.daily}
+          </button>
+        )}
+      </div>
+    </div>
+  );
+}
 
 const INITIAL_TRAINING_DATA = [
   { epoch: 1, accuracy: 30, loss: 0.9 },
@@ -12,16 +95,39 @@ const INITIAL_TRAINING_DATA = [
   { epoch: 5, accuracy: 80, loss: 0.25 },
 ];
 
+const INITIAL_TRAINING_DATA_CODER = [
+  { epoch: 1, accuracy: 50, loss: 0.8 },
+  { epoch: 2, accuracy: 65, loss: 0.6 },
+  { epoch: 3, accuracy: 75, loss: 0.4 },
+  { epoch: 4, accuracy: 85, loss: 0.25 },
+  { epoch: 5, accuracy: 92, loss: 0.15 },
+];
+
 export default function SuperAI() {
   const [activeTab, setActiveTab] = useState('models');
   const [models, setModels] = useState([
     { id: 1, name: 'Customer Sentiment LLM', type: 'Language', status: 'Deployed', accuracy: '94.2%', dataset: 'ds_support_log' },
     { id: 2, name: 'Product Vision Classifier', type: 'Vision', status: 'Training', accuracy: '-', dataset: 'ds_vision_v2' },
+    { id: 3, name: 'AI Coder Pro', type: 'Code', status: 'Training', accuracy: '-', dataset: 'ds_professional_coding' },
   ]);
   const [isCreating, setIsCreating] = useState(false);
   const [newModel, setNewModel] = useState({ name: '', type: 'Language', dataset: '' });
   
   const [selectedModel, setSelectedModel] = useState<number | null>(null);
+
+  const [marketplaceModels, setMarketplaceModels] = useState([
+    { id: 101, name: 'Medical NLP Specialist', author: 'HealthAI Corp', type: 'Language', price: 50, rating: 4.8, description: 'Fine-tuned LLM for medical diagnosis extraction. Excellent performance on medical journals and electronic health records.', reviews: [{user: 'dr_john', comment: 'Very accurate! Saves me hours of note reading.', rating: 5}] },
+    { id: 102, name: 'Retail Object Detector', author: 'Visionary', type: 'Vision', price: 120, rating: 4.5, description: 'Detect over 500 common retail objects like carts, shelves, brands, and people with 99% accuracy on typical CCTV angles.', reviews: [] },
+  ]);
+  const [showMarketplaceModal, setShowMarketplaceModal] = useState<number | null>(null);
+  const [publishForm, setPublishForm] = useState({ price: 0, description: '' });
+  const [isPublishing, setIsPublishing] = useState(false);
+  const [publishError, setPublishError] = useState('');
+  const [selectedMarketplaceModel, setSelectedMarketplaceModel] = useState<any>(null);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+
+  const [marketFilterType, setMarketFilterType] = useState('All');
+  const [marketSortBy, setMarketSortBy] = useState('rating');
 
   // Auth state
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -32,59 +138,99 @@ export default function SuperAI() {
   const [currentUserRole, setCurrentUserRole] = useState<'admin' | 'owner' | 'user' | null>(null);
   const [currentUsername, setCurrentUsername] = useState('');
   const [registeredUsers, setRegisteredUsers] = useState<{username: string, password: string}[]>([]);
+  const [mounted, setMounted] = useState(false);
+
+  const [isLoginLoading, setIsLoginLoading] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+    const storedUsers = localStorage.getItem('superai_users');
+    if (storedUsers) {
+      try { setRegisteredUsers(JSON.parse(storedUsers)); } catch(e) {}
+    }
+    const authStatus = localStorage.getItem('superai_auth');
+    if (authStatus === 'true') {
+      setIsAuthenticated(true);
+      setCurrentUserRole(localStorage.getItem('superai_role') as any);
+      setCurrentUsername(localStorage.getItem('superai_username') || '');
+    }
+  }, []);
 
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
-    if (isRegistering) {
-      if (!loginUsername || !loginPassword) {
-        setLoginError('Username and password required');
-        return;
-      }
-      if (loginUsername.startsWith('Dev') || registeredUsers.some(u => u.username === loginUsername)) {
-        setLoginError('Username unavailable');
-        return;
-      }
-      setRegisteredUsers([...registeredUsers, { username: loginUsername, password: loginPassword }]);
-      setCurrentUsername(loginUsername);
-      setCurrentUserRole('user');
-      setIsAuthenticated(true);
-      setLoginError('');
+    setLoginError('');
+
+    if (loginUsername.length < 3) {
+      setLoginError('Username must be at least 3 characters');
+      return;
+    }
+    if (loginPassword.length < 5) {
+      setLoginError('Password must be at least 5 characters');
       return;
     }
 
-    if (loginUsername === 'Dev-Bigdik' && loginPassword === 'DigBik') {
-      setIsAuthenticated(true);
-      setCurrentUserRole('owner');
-      setCurrentUsername(loginUsername);
-      setLoginError('');
-      return;
-    }
-    
-    // Check low admin multi-login
-    for (let i = 1; i <= 6; i++) {
-       if (loginUsername === `DevAss${i}` && loginPassword === `AssDev${i}`) {
-         setIsAuthenticated(true);
-         setCurrentUserRole('admin');
-         setCurrentUsername(loginUsername);
-         setLoginError('');
-         return;
-       }
-    }
+    setIsLoginLoading(true);
 
-    const user = registeredUsers.find(u => u.username === loginUsername && u.password === loginPassword);
-    if (user) {
-      setIsAuthenticated(true);
-      setCurrentUserRole('user');
-      setCurrentUsername(loginUsername);
-      setLoginError('');
-      return;
-    }
-    
-    setLoginError('Invalid credentials');
+    setTimeout(() => {
+      setIsLoginLoading(false);
+      if (isRegistering) {
+        if (loginUsername.startsWith('Dev') || registeredUsers.some(u => u.username === loginUsername)) {
+          setLoginError('Username unavailable');
+          return;
+        }
+        const newUsers = [...registeredUsers, { username: loginUsername, password: loginPassword }];
+        setRegisteredUsers(newUsers);
+        localStorage.setItem('superai_users', JSON.stringify(newUsers));
+        setCurrentUsername(loginUsername);
+        setCurrentUserRole('user');
+        setIsAuthenticated(true);
+        localStorage.setItem('superai_auth', 'true');
+        localStorage.setItem('superai_role', 'user');
+        localStorage.setItem('superai_username', loginUsername);
+        return;
+      }
+
+      if (loginUsername === 'Dev-Bigdik' && loginPassword === 'DigBik') {
+        setIsAuthenticated(true);
+        setCurrentUserRole('owner');
+        setCurrentUsername(loginUsername);
+        localStorage.setItem('superai_auth', 'true');
+        localStorage.setItem('superai_role', 'owner');
+        localStorage.setItem('superai_username', loginUsername);
+        return;
+      }
+      
+      // Check low admin multi-login
+      for (let i = 1; i <= 6; i++) {
+         if (loginUsername === `DevAss${i}` && loginPassword === `AssDev${i}`) {
+           setIsAuthenticated(true);
+           setCurrentUserRole('admin');
+           setCurrentUsername(loginUsername);
+           localStorage.setItem('superai_auth', 'true');
+           localStorage.setItem('superai_role', 'admin');
+           localStorage.setItem('superai_username', loginUsername);
+           return;
+         }
+      }
+
+      const user = registeredUsers.find(u => u.username === loginUsername && u.password === loginPassword);
+      if (user) {
+        setIsAuthenticated(true);
+        setCurrentUserRole('user');
+        setCurrentUsername(loginUsername);
+        localStorage.setItem('superai_auth', 'true');
+        localStorage.setItem('superai_role', 'user');
+        localStorage.setItem('superai_username', loginUsername);
+        return;
+      }
+      
+      setLoginError('Invalid credentials');
+    }, 1200);
   };
   
   const [modelsData, setModelsData] = useState<Record<number, { epoch: number, accuracy: number, loss: number }[]>>({
-    2: INITIAL_TRAINING_DATA
+    2: INITIAL_TRAINING_DATA,
+    3: INITIAL_TRAINING_DATA_CODER
   });
   const [pausedModels, setPausedModels] = useState<Record<number, boolean>>({});
 
@@ -104,20 +250,42 @@ export default function SuperAI() {
   const [gitignoreContent, setGitignoreContent] = useState('# Artifacts\nmodels/\ncheckpoints/\n*.pth\n*.pt\n\n# Data\ndata/\n*.csv\n\n# Temp\n.DS_Store\n__pycache__/\n');
   const [gitHooksContent, setGitHooksContent] = useState('#!/bin/sh\n# pre-commit hook\necho "Running checks..."\n# Your custom pre-commit logic');
 
-  const handlePlaygroundSubmit = (e: React.FormEvent) => {
+  const handlePlaygroundSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!playgroundInput.trim()) return;
     
     const newMessages = [...playgroundMessages, { role: 'user', content: playgroundInput }];
-    setPlaygroundMessages(newMessages);
+    setPlaygroundMessages([...newMessages, { role: 'model', content: "Generating response..." }]);
     setPlaygroundInput('');
     
-    setTimeout(() => {
+    try {
+      const selectedModelInfo = models.find(m => m.id === playgroundSelectedModel);
+      
+      const response = await fetch('/api/gemini/generate', {
+        method: 'POST',
+        headers: {
+           'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+           prompt: newMessages.map(msg => `${msg.role}: ${msg.content}`).join('\n'),
+           modelType: selectedModelInfo?.type || 'Language',
+           modelName: selectedModelInfo?.name || 'Unknown Model',
+           dataset: selectedModelInfo?.dataset || 'unknown_dataset',
+        })
+      });
+      const data = await response.json();
+      
       setPlaygroundMessages([...newMessages, { 
         role: 'model', 
-        content: `Simulated response. The sentiment is extremely positive (0.98 confidence).` 
+        content: data.text || "No response generated."
       }]);
-    }, 1000);
+    } catch (error) {
+       console.error("Playground error:", error);
+       setPlaygroundMessages([...newMessages, { 
+         role: 'model', 
+         content: "Error: Could not connect to model inference endpoints."
+       }]);
+    }
   };
 
   const modelsRef = React.useRef(models);
@@ -156,6 +324,27 @@ export default function SuperAI() {
   }, []);
 
   const [userSubscriptions, setUserSubscriptions] = useState<string[]>([]);
+  const [pendingSubscription, setPendingSubscription] = useState<any>(null);
+  const [isSubscribing, setIsSubscribing] = useState(false);
+  const [subscriptionError, setSubscriptionError] = useState('');
+
+  const handleConfirmSubscription = () => {
+    setSubscriptionError('');
+    setIsSubscribing(true);
+    
+    // Simulate API call
+    setTimeout(() => {
+      setIsSubscribing(false);
+      // Simulate random error for demonstration
+      if (Math.random() < 0.2) {
+        setSubscriptionError('Payment processor declined the transaction. Please check your billing details.');
+        return;
+      }
+      
+      setUserSubscriptions([...userSubscriptions, ...pendingSubscription.id.split(',')]);
+      setPendingSubscription(null);
+    }, 1500);
+  };
 
   const handleCreate = (e: React.FormEvent) => {
     e.preventDefault();
@@ -183,15 +372,39 @@ export default function SuperAI() {
   const currentModel = models.find(m => m.id === selectedModel);
   const trainingData = selectedModel ? (modelsData[selectedModel] || []) : [];
 
+  const filteredAndSortedMarketplaceModels = useMemo(() => {
+     let result = marketplaceModels;
+     if (marketFilterType !== 'All') {
+         result = result.filter(m => m.type === marketFilterType);
+     }
+     result = [...result].sort((a, b) => {
+         if (marketSortBy === 'rating') {
+             return b.rating - a.rating;
+         } else if (marketSortBy === 'price_asc') {
+             return a.price - b.price;
+         } else if (marketSortBy === 'price_desc') {
+             return b.price - a.price;
+         } else if (marketSortBy === 'popularity') {
+             return b.reviews.length - a.reviews.length;
+         }
+         return 0;
+     });
+     return result;
+  }, [marketplaceModels, marketFilterType, marketSortBy]);
+
+  if (!mounted) {
+    return null;
+  }
+
   if (!isAuthenticated) {
     return (
-      <div className="flex h-screen bg-[#0F172A] text-slate-300 font-sans items-center justify-center">
-        <form onSubmit={handleLogin} className="bg-slate-900 border border-slate-800 p-8 rounded-lg w-96 shadow-2xl">
+      <div className="flex h-screen bg-[#0F172A] text-slate-300 font-sans items-center justify-center p-4">
+        <form onSubmit={handleLogin} className="bg-slate-900 border border-slate-800 p-8 rounded-lg w-full max-w-md shadow-2xl">
           <div className="flex items-center justify-center mb-8">
             <div className="w-8 h-8 bg-cyan-500 rounded flex items-center justify-center mr-3">
               <div className="w-4 h-4 bg-slate-950 rounded-full" />
             </div>
-            <h1 className="text-2xl font-bold text-white tracking-tight">{isRegistering ? 'SuperAI Registration' : 'SuperAI Login'}</h1>
+            <h1 className="text-2xl font-bold text-white tracking-tight text-center">{isRegistering ? 'SuperAI Registration' : 'SuperAI Login'}</h1>
           </div>
           
           <div className="space-y-4">
@@ -201,8 +414,9 @@ export default function SuperAI() {
                 type="text" 
                 value={loginUsername} 
                 onChange={e => setLoginUsername(e.target.value)} 
-                className="w-full bg-slate-950 border border-slate-800 rounded px-3 py-2 text-sm text-slate-200 focus:border-cyan-500 focus:outline-none"
+                className="w-full bg-slate-950 border border-slate-800 rounded px-3 py-2 text-sm text-slate-200 focus:border-cyan-500 focus:outline-none transition-colors"
                 placeholder={isRegistering ? "Choose a username" : "Enter username"}
+                disabled={isLoginLoading}
               />
             </div>
             <div>
@@ -211,22 +425,43 @@ export default function SuperAI() {
                 type="password" 
                 value={loginPassword} 
                 onChange={e => setLoginPassword(e.target.value)} 
-                className="w-full bg-slate-950 border border-slate-800 rounded px-3 py-2 text-sm text-slate-200 focus:border-cyan-500 focus:outline-none"
+                className="w-full bg-slate-950 border border-slate-800 rounded px-3 py-2 text-sm text-slate-200 focus:border-cyan-500 focus:outline-none transition-colors"
                 placeholder={isRegistering ? "Choose a password" : "Enter password"}
+                disabled={isLoginLoading}
               />
             </div>
             {loginError && <p className="text-red-400 text-xs font-mono">{loginError}</p>}
-            <button type="submit" className="w-full bg-cyan-600 hover:bg-cyan-500 text-white font-bold py-2 rounded text-xs uppercase tracking-widest transition-colors mt-4">
-              {isRegistering ? 'Create Account' : 'Sign In'}
+            <button 
+              type="submit" 
+              disabled={isLoginLoading}
+              className="w-full bg-cyan-600 hover:bg-cyan-500 disabled:bg-cyan-800 disabled:text-cyan-400/50 text-white font-bold py-2 rounded text-xs uppercase tracking-widest transition-colors mt-4 relative flex items-center justify-center"
+            >
+              {isLoginLoading ? (
+                <>
+                  <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
+                  {isRegistering ? 'Creating...' : 'Signing In...'}
+                </>
+              ) : (
+                isRegistering ? 'Create Account' : 'Sign In'
+              )}
             </button>
             <div className="text-center mt-4">
               <button 
                 type="button" 
+                disabled={isLoginLoading}
                 onClick={() => { setIsRegistering(!isRegistering); setLoginError(''); setLoginUsername(''); setLoginPassword(''); }} 
-                className="text-xs text-slate-500 hover:text-cyan-400 transition-colors"
+                className="text-xs text-slate-500 hover:text-cyan-400 transition-colors mb-4 disabled:opacity-50"
               >
                 {isRegistering ? 'Already have an account? Sign in' : 'New user? Create account'}
               </button>
+              {!isRegistering && (
+                <div className="text-[10px] text-slate-500 font-mono mt-2 bg-slate-900 border border-slate-800 p-2 rounded text-left">
+                  <p className="mb-1 text-slate-400 text-center border-b border-slate-800 pb-1">Demo Owner Account</p>
+                  <div className="flex justify-between mt-1">
+                     <span>User: Dev-Bigdik</span><span>Pass: DigBik</span>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         </form>
@@ -237,7 +472,7 @@ export default function SuperAI() {
   return (
     <div className="flex h-screen bg-[#0F172A] text-slate-300 font-sans overflow-hidden">
       {/* Sidebar */}
-      <aside className={`${isSidebarOpen ? 'w-64' : 'w-16'} transition-all duration-300 ease-in-out border-r border-slate-800 bg-slate-900/20 flex flex-col shrink-0`}>
+      <aside className={`${isSidebarOpen ? 'w-64' : 'w-16'} hidden md:flex transition-all duration-300 ease-in-out border-r border-slate-800 bg-slate-900/20 flex-col shrink-0`}>
         <div className={`h-12 flex items-center ${isSidebarOpen ? 'px-4' : 'justify-center'} border-b border-slate-800 shrink-0`}>
           <div className="w-6 h-6 bg-cyan-500 rounded flex items-center justify-center shrink-0">
             <div className="w-3 h-3 bg-slate-950 rounded-full" />
@@ -262,6 +497,7 @@ export default function SuperAI() {
               { id: 'models', icon: Box, label: 'Models', roles: ['owner', 'admin', 'user'] },
               { id: 'datasets', icon: Database, label: 'Datasets', roles: ['owner', 'admin', 'user'] },
               { id: 'templates', icon: LayoutTemplate, label: 'Templates', roles: ['owner', 'admin'] },
+              { id: 'marketplace', icon: Store, label: 'Marketplace', roles: ['owner', 'admin', 'user'] },
               { id: 'playground', icon: Terminal, label: 'Playground', roles: ['owner', 'admin', 'user'] },
               { id: 'team', icon: Users, label: 'Team & Access', roles: ['owner'] },
               { id: 'git', icon: GitBranch, label: 'Git Integration', roles: ['owner', 'admin'] },
@@ -290,7 +526,15 @@ export default function SuperAI() {
               <Settings className={`w-4 h-4 shrink-0 ${isSidebarOpen ? 'mr-2' : ''}`} /> {isSidebarOpen && "Settings"}
             </button>
           )}
-          <button onClick={() => { setIsAuthenticated(false); setCurrentUserRole(null); setCurrentUsername(''); setActiveTab('dashboard'); }} title={!isSidebarOpen ? "Logout" : undefined} className={`flex items-center text-xs font-medium text-red-500 hover:text-red-400 uppercase tracking-widest w-full ${isSidebarOpen ? '' : 'justify-center'}`}>
+          <button onClick={() => { 
+            setIsAuthenticated(false); 
+            setCurrentUserRole(null); 
+            setCurrentUsername(''); 
+            setActiveTab('dashboard'); 
+            localStorage.removeItem('superai_auth');
+            localStorage.removeItem('superai_role');
+            localStorage.removeItem('superai_username');
+          }} title={!isSidebarOpen ? "Logout" : undefined} className={`flex items-center text-xs font-medium text-red-500 hover:text-red-400 uppercase tracking-widest w-full ${isSidebarOpen ? '' : 'justify-center'}`}>
             <ArrowLeft className={`w-4 h-4 shrink-0 ${isSidebarOpen ? 'mr-2' : ''}`} /> {isSidebarOpen && "Logout"}
           </button>
           <button onClick={() => setIsSidebarOpen(!isSidebarOpen)} title={!isSidebarOpen ? "Expand" : undefined} className={`flex items-center text-xs font-medium text-slate-500 hover:text-slate-300 uppercase tracking-widest w-full ${isSidebarOpen ? '' : 'justify-center'}`}>
@@ -302,11 +546,17 @@ export default function SuperAI() {
 
       {/* Main Content */}
       <main className="flex-1 flex flex-col overflow-hidden">
-        <header className="h-12 bg-slate-900/50 border-b border-slate-800 flex items-center justify-between px-6 shrink-0">
-          <div className="flex items-center gap-4">
+        <header className="h-12 bg-slate-900/50 border-b border-slate-800 flex items-center justify-between px-4 md:px-6 shrink-0 relative z-40">
+          <div className="flex items-center gap-3 md:gap-4">
+            <button 
+              className="md:hidden p-1 text-slate-400 hover:text-white"
+              onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+            >
+              <Menu className="w-5 h-5" />
+            </button>
             <h1 className="text-sm font-semibold text-white uppercase tracking-widest">{activeTab}</h1>
-            <div className="h-4 w-[1px] bg-slate-700"></div>
-            <div className="flex items-center gap-2 bg-slate-800/50 px-2.5 py-0.5 rounded-full border border-slate-700">
+            <div className="hidden md:block h-4 w-[1px] bg-slate-700"></div>
+            <div className="hidden md:flex items-center gap-2 bg-slate-800/50 px-2.5 py-0.5 rounded-full border border-slate-700">
               <div className="w-1.5 h-1.5 bg-emerald-500 rounded-full"></div>
               <span className="text-[9px] font-mono text-emerald-400 uppercase">System Online</span>
             </div>
@@ -317,6 +567,93 @@ export default function SuperAI() {
              </div>
           </div>
         </header>
+
+        {/* Mobile Menu Overlay */}
+        {isMobileMenuOpen && (
+          <div className="md:hidden fixed inset-0 z-50 flex">
+            {/* Overlay background */}
+            <div 
+              className="fixed inset-0 bg-black/60 backdrop-blur-sm"
+              onClick={() => setIsMobileMenuOpen(false)}
+            />
+            {/* Sidebar content */}
+            <aside className="w-64 relative z-50 bg-slate-900 border-r border-slate-800 h-full flex flex-col shadow-2xl">
+              <div className="h-12 flex items-center justify-between px-4 border-b border-slate-800 shrink-0">
+                <div className="flex items-center">
+                  <div className="w-6 h-6 bg-cyan-500 rounded flex items-center justify-center shrink-0">
+                    <div className="w-3 h-3 bg-slate-950 rounded-full" />
+                  </div>
+                  <div className="flex flex-col ml-2 overflow-hidden whitespace-nowrap">
+                    <span className="font-bold text-white tracking-tight text-lg leading-tight">SuperAI</span>
+                  </div>
+                </div>
+                <button onClick={() => setIsMobileMenuOpen(false)} className="p-1 text-slate-400 hover:text-white">
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              <div className="flex-1 overflow-y-auto overflow-x-hidden pt-4 pb-20 no-scrollbar">
+                <div className="px-4 mb-4">
+                   <div className="text-[10px] font-bold text-slate-500 uppercase tracking-widest pl-2 mb-2">Core</div>
+                   {[
+                     { id: 'models', label: 'Models', icon: Cpu },
+                     { id: 'datasets', label: 'Datasets', icon: Database },
+                     { id: 'marketplace', label: 'Marketplace', icon: Store },
+                     { id: 'playground', label: 'Playground', icon: Terminal },
+                   ].map(nav => (
+                     <button
+                       key={nav.id}
+                       onClick={() => { setActiveTab(nav.id); setIsMobileMenuOpen(false); setSelectedModel(null); setSelectedDataset(null); }}
+                       className={`w-full flex items-center h-10 px-3 rounded-lg mb-1 transition-all ${
+                         activeTab === nav.id ? 'bg-cyan-900/30 text-cyan-400 font-medium' : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800'
+                       }`}
+                     >
+                       <nav.icon className={`w-5 h-5 ${activeTab === nav.id ? 'text-cyan-400' : 'text-slate-500'}`} />
+                       <span className="ml-3 text-sm">{nav.label}</span>
+                     </button>
+                   ))}
+                </div>
+
+                <div className="px-4 mb-4">
+                   <div className="text-[10px] font-bold text-slate-500 uppercase tracking-widest pl-2 mb-2">System</div>
+                   {[
+                     { id: 'git', label: 'Version Control', icon: GitBranch },
+                     { id: 'subscriptions', label: 'Subscriptions', icon: CreditCard },
+                     { id: 'settings', label: 'Settings', icon: Settings },
+                   ].map(nav => (
+                     <button
+                       key={nav.id}
+                       onClick={() => { setActiveTab(nav.id); setIsMobileMenuOpen(false); }}
+                       className={`w-full flex items-center h-10 px-3 rounded-lg mb-1 transition-all ${
+                         activeTab === nav.id ? 'bg-cyan-900/30 text-cyan-400 font-medium' : 'text-slate-400 hover:text-slate-200 hover:bg-slate-800'
+                       }`}
+                     >
+                       <nav.icon className={`w-5 h-5 ${activeTab === nav.id ? 'text-cyan-400' : 'text-slate-500'}`} />
+                       <span className="ml-3 text-sm">{nav.label}</span>
+                     </button>
+                   ))}
+                </div>
+              </div>
+              <div className="mt-auto px-4 pb-4">
+                <button 
+                  onClick={() => {
+                    localStorage.removeItem('superai_auth');
+                    localStorage.removeItem('superai_role');
+                    localStorage.removeItem('superai_username');
+                    setIsAuthenticated(false);
+                    setCurrentUserRole(null);
+                    setCurrentUsername('');
+                    setIsMobileMenuOpen(false);
+                  }}
+                  className="w-full flex items-center h-10 px-3 text-slate-400 hover:text-rose-400 hover:bg-slate-800 rounded-lg transition-all"
+                >
+                  <StopCircle className="w-5 h-5" />
+                  <span className="ml-3 text-sm">Disconnect</span>
+                </button>
+              </div>
+            </aside>
+          </div>
+        )}
 
         <div className="flex-1 overflow-auto p-4 sm:p-6 lg:p-8 flex flex-col">
           {activeTab === 'models' && !selectedModel && (
@@ -385,6 +722,7 @@ export default function SuperAI() {
                           className="w-full bg-slate-950 border border-slate-700 rounded px-3 py-2 text-xs text-slate-200 focus:border-cyan-500 focus:outline-none"
                         >
                           <option value="">Select source...</option>
+                          <option>ds_professional_coding (Code)</option>
                           <option>ds_support_log (Language)</option>
                           <option>ds_vision_v2 (Vision)</option>
                           <option>ds_audio_clips (Audio)</option>
@@ -427,7 +765,21 @@ export default function SuperAI() {
                         <div className="flex items-center text-[10px] font-mono text-slate-500 mt-1 gap-3">
                           <span className="flex items-center"><Layers className="w-3 h-3 mr-1" /> {model.type}</span>
                           <span>|</span>
-                          <span>ACC: {model.accuracy}</span>
+                          {(() => {
+                             const mData = modelsData[model.id];
+                             if (mData && mData.length > 0) {
+                                const lastData = mData[mData.length - 1];
+                                return (
+                                   <>
+                                      <span>ACC: {lastData.accuracy.toFixed(1)}%</span>
+                                      <span>|</span>
+                                      <span>LOSS: {lastData.loss.toFixed(3)}</span>
+                                   </>
+                                );
+                             } else {
+                                return <span>ACC: {model.accuracy}</span>;
+                             }
+                          })()}
                         </div>
                       </div>
                     </div>
@@ -451,14 +803,23 @@ export default function SuperAI() {
                             <span className="text-[9px] font-mono text-slate-400 uppercase">{model.status}</span>
                           </div>
                         )}
+                      {model.status === 'Deployed' && (
+                        <button onClick={() => setShowMarketplaceModal(model.id)} className="text-[10px] font-bold uppercase tracking-widest text-emerald-400 bg-emerald-950/20 border border-emerald-900/50 hover:bg-emerald-900/30 px-2 py-1.5 rounded transition">
+                          <Store className="w-3 h-3 inline-block mr-1" /> Publish
+                        </button>
+                      )}
+                      
                       <button onClick={() => { setIsViewingVersions(true); setSelectedModel(model.id); }} className="text-slate-500 hover:text-slate-300 transition-colors mr-2">
                         <History className="w-4 h-4" />
                       </button>
-                      <button className="text-slate-500 hover:text-slate-300 transition-colors">
+                      <button className="text-slate-500 hover:text-slate-300 transition-colors mr-2">
                         <Settings className="w-4 h-4" />
                       </button>
-                      <button onClick={() => { setSelectedModel(model.id); setIsViewingVersions(false); }} className="flex items-center text-xs font-bold text-slate-300 bg-slate-800 hover:bg-slate-700 border border-slate-700 px-3 py-1.5 rounded transition-colors">
-                        <Play className="w-3 h-3 mr-1 text-cyan-400" /> Connect
+                      <button onClick={() => { setSelectedModel(model.id); setIsViewingVersions(false); }} className="flex items-center text-xs font-bold text-slate-300 bg-slate-800 hover:bg-slate-700 border border-slate-700 px-3 py-1.5 rounded transition-colors mr-2">
+                        <Play className="w-3 h-3 mr-1 text-cyan-400" /> Details
+                      </button>
+                      <button onClick={() => { setPlaygroundSelectedModel(model.id); setPlaygroundMessages([]); setActiveTab('playground'); }} className="flex items-center text-xs font-bold text-white bg-cyan-600 hover:bg-cyan-500 border border-cyan-500 px-3 py-1.5 rounded transition-colors shadow-[0_0_10px_rgba(6,182,212,0.2)]">
+                        <MessageSquare className="w-3 h-3 mr-1" /> Chat
                       </button>
                     </div>
                   </div>
@@ -650,8 +1011,8 @@ export default function SuperAI() {
                 </div>
               </div>
 
-              <div className="bg-slate-900 border border-slate-800 rounded-lg">
-                 <table className="w-full text-left text-xs">
+              <div className="bg-slate-900 border border-slate-800 rounded-lg overflow-x-auto">
+                 <table className="w-full text-left text-xs whitespace-nowrap">
                    <thead className="border-b border-slate-800 text-[10px] text-slate-500 uppercase tracking-widest bg-slate-900/50">
                      <tr>
                        <th className="px-4 py-3 font-medium">Dataset Name</th>
@@ -661,6 +1022,12 @@ export default function SuperAI() {
                      </tr>
                    </thead>
                    <tbody className="divide-y divide-slate-800 text-slate-300">
+                     <tr className="hover:bg-slate-800/30 transition-colors cursor-pointer" onClick={() => setSelectedDataset('ds_professional_coding')}>
+                       <td className="px-4 py-3 font-medium flex items-center"><Database className="w-4 h-4 mr-2 text-slate-500"/> ds_professional_coding</td>
+                       <td className="px-4 py-3"><span className="bg-slate-800 px-2 py-0.5 rounded text-[10px] font-mono text-fuchsia-400">JSONL</span></td>
+                       <td className="px-4 py-3 font-mono text-slate-500">42.1 GB</td>
+                       <td className="px-4 py-3 text-slate-500">Just now</td>
+                     </tr>
                      <tr className="hover:bg-slate-800/30 transition-colors cursor-pointer" onClick={() => setSelectedDataset('ds_sales_q1')}>
                        <td className="px-4 py-3 font-medium flex items-center"><Database className="w-4 h-4 mr-2 text-slate-500"/> ds_sales_q1</td>
                        <td className="px-4 py-3"><span className="bg-slate-800 px-2 py-0.5 rounded text-[10px] font-mono text-cyan-400">CSV</span></td>
@@ -849,6 +1216,128 @@ export default function SuperAI() {
             </div>
           )}
 
+          {activeTab === 'marketplace' && (
+            <div className="flex-1 flex flex-col space-y-6 max-w-5xl mx-auto w-full">
+              {selectedMarketplaceModel ? (
+                <div className="bg-slate-900 border border-slate-800 rounded-lg p-6 flex flex-col">
+                  <div className="flex items-center justify-between border-b border-slate-800 pb-4 mb-6">
+                    <button onClick={() => setSelectedMarketplaceModel(null)} className="flex items-center text-xs font-bold text-slate-400 hover:text-white transition-colors uppercase font-mono">
+                      <ArrowLeft className="w-4 h-4 mr-2" /> Back to Marketplace
+                    </button>
+                    <div className="flex items-center gap-2">
+                       <span className="text-[10px] text-cyan-500 font-mono bg-cyan-900/10 px-2 py-1 rounded uppercase border border-cyan-500/20">{selectedMarketplaceModel.type}</span>
+                    </div>
+                  </div>
+                  <div className="mb-6">
+                    <h2 className="text-2xl font-bold text-white mb-2">{selectedMarketplaceModel.name}</h2>
+                    <p className="text-sm font-mono text-slate-400">By {selectedMarketplaceModel.author}</p>
+                  </div>
+                  <div className="flex items-center gap-4 text-sm bg-slate-950 p-4 rounded-lg border border-slate-800 mb-6">
+                     <div className="flex items-center gap-1">
+                        <Star className="w-4 h-4 text-yellow-500 fill-current" />
+                        <span className="font-bold text-white">{selectedMarketplaceModel.rating}</span>
+                        <span className="text-slate-500">({selectedMarketplaceModel.reviews.length} reviews)</span>
+                     </div>
+                     <div className="w-[1px] h-4 bg-slate-700"></div>
+                     <div className="font-bold text-emerald-400">${selectedMarketplaceModel.price}</div>
+                     <div className="text-[10px] text-slate-500 uppercase tracking-widest bg-emerald-950/20 border border-emerald-900/30 px-2 py-1 rounded">+ 25% Platform & Developer Tax</div>
+                  </div>
+                  <div className="mb-8">
+                     <h3 className="text-sm font-bold text-slate-200 mb-2 uppercase tracking-widest font-mono">About this model</h3>
+                     <p className="text-sm text-slate-300 leading-relaxed p-4 bg-slate-950/50 rounded-lg border border-slate-800/50">
+                        {selectedMarketplaceModel.description}
+                     </p>
+                  </div>
+                  
+                  <div className="border-t border-slate-800 pt-6 mt-2 mb-6">
+                     <h3 className="text-sm font-bold text-white mb-4 uppercase tracking-widest font-mono">User Reviews</h3>
+                     {selectedMarketplaceModel.reviews.length > 0 ? (
+                        <div className="space-y-4">
+                           {selectedMarketplaceModel.reviews.map((r: any, idx: number) => (
+                              <div key={idx} className="bg-slate-950/50 p-4 rounded border border-slate-800 text-sm">
+                                 <div className="flex items-center justify-between mb-2">
+                                    <span className="font-bold text-cyan-400">@{r.user}</span>
+                                    <div className="flex items-center gap-0.5">
+                                       {[...Array(5)].map((_, i) => (
+                                          <Star key={i} className={`w-3.5 h-3.5 ${i < r.rating ? 'text-yellow-500 fill-current' : 'text-slate-700'}`} />
+                                       ))}
+                                    </div>
+                                 </div>
+                                 <p className="text-slate-300">{r.comment}</p>
+                              </div>
+                           ))}
+                        </div>
+                     ) : (
+                        <p className="text-xs text-slate-500 italic">No reviews yet.</p>
+                     )}
+                  </div>
+                  
+                  <div className="flex justify-end pt-4 mt-auto border-t border-slate-800">
+                     <button className="bg-emerald-600 hover:bg-emerald-500 text-white font-bold py-2.5 px-8 rounded uppercase tracking-widest text-sm transition-colors border border-emerald-500">
+                        Purchase & Install
+                     </button>
+                  </div>
+                </div>
+              ) : (
+                <>
+                  <div className="flex flex-col md:flex-row justify-between md:items-center bg-slate-900 border border-slate-800 rounded-lg p-4 gap-4">
+                    <div>
+                      <h2 className="text-sm font-bold text-slate-200 flex items-center gap-2">
+                         <Store className="w-5 h-5 text-cyan-400" /> Model Marketplace
+                      </h2>
+                      <p className="text-xs text-slate-500 font-mono mt-1">Discover, purchase, or sell trained models with the community.</p>
+                    </div>
+                    
+                    <div className="flex items-center gap-3">
+                       <select 
+                         value={marketFilterType}
+                         onChange={(e) => setMarketFilterType(e.target.value)}
+                         className="bg-slate-950 border border-slate-800 text-slate-300 rounded px-3 py-1.5 text-xs focus:outline-none focus:border-cyan-500"
+                       >
+                         <option value="All">All Types</option>
+                         <option value="Language">Language</option>
+                         <option value="Vision">Vision</option>
+                         <option value="Audio">Audio</option>
+                         <option value="Multi-modal">Multi-modal</option>
+                       </select>
+                       
+                       <select 
+                         value={marketSortBy}
+                         onChange={(e) => setMarketSortBy(e.target.value)}
+                         className="bg-slate-950 border border-slate-800 text-slate-300 rounded px-3 py-1.5 text-xs focus:outline-none focus:border-cyan-500"
+                       >
+                         <option value="rating">Top Rated</option>
+                         <option value="popularity">Most Popular</option>
+                         <option value="price_asc">Price: Low to High</option>
+                         <option value="price_desc">Price: High to Low</option>
+                       </select>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                     {filteredAndSortedMarketplaceModels.map((m) => (
+                        <div key={m.id} className="bg-slate-900 border border-slate-800 rounded-lg p-5 flex flex-col hover:border-slate-700 transition-colors cursor-pointer group shadow-sm" onClick={() => setSelectedMarketplaceModel(m)}>
+                           <div className="flex justify-between items-start mb-4">
+                              <h3 className="text-base font-bold text-white group-hover:text-cyan-400 transition-colors">{m.name}</h3>
+                              <span className="text-[10px] font-mono font-bold bg-slate-950 text-slate-400 px-2 py-0.5 rounded border border-slate-800 uppercase">{m.type}</span>
+                           </div>
+                           <p className="text-xs text-slate-400 mb-6 bg-slate-950/50 p-2 rounded line-clamp-3 leading-relaxed flex-1">{m.description}</p>
+                           <div className="flex items-center justify-between border-t border-slate-800 pt-4 mt-auto">
+                              <div className="flex items-center gap-1.5 text-xs">
+                                 <Star className="w-4 h-4 text-yellow-500 fill-current" />
+                                 <span className="font-bold text-slate-200">{m.rating}</span>
+                                 <span className="text-slate-600 font-mono">({m.reviews.length})</span>
+                              </div>
+                              <div className="text-sm font-bold text-emerald-400">${m.price}</div>
+                           </div>
+                        </div>
+                     ))}
+                  </div>
+                </>
+              )}
+            </div>
+          )}
+
           {activeTab === 'playground' && (
             <div className="flex-1 flex flex-col space-y-6 max-w-5xl mx-auto w-full h-full pb-4">
               <div className="flex justify-between items-center bg-slate-900 border border-slate-800 rounded-lg p-4 shrink-0">
@@ -909,18 +1398,17 @@ export default function SuperAI() {
                           onChange={(e) => setPlaygroundInput(e.target.value)}
                           placeholder="Type your message or prompt..."
                           className="w-full bg-slate-900 border border-slate-700 rounded-full pl-4 pr-12 py-3 text-sm text-slate-200 focus:outline-none focus:border-cyan-500"
-                          disabled={models.find(m => m.id === playgroundSelectedModel)?.status !== 'Deployed'}
                         />
                         <button 
                           type="submit" 
-                          disabled={!playgroundInput.trim() || models.find(m => m.id === playgroundSelectedModel)?.status !== 'Deployed'}
+                          disabled={!playgroundInput.trim()}
                           className="absolute right-2 top-2 p-1.5 bg-cyan-600 hover:bg-cyan-500 disabled:bg-slate-800 disabled:text-slate-600 text-white rounded-full transition-colors flex items-center justify-center aspect-square"
                         >
                           <Play className="w-4 h-4 ml-0.5" />
                         </button>
                       </form>
                       {models.find(m => m.id === playgroundSelectedModel)?.status !== 'Deployed' && (
-                        <p className="text-center text-[10px] text-amber-500 mt-2 font-mono uppercase tracking-widest">Model must be deployed to interact.</p>
+                        <p className="text-center text-[10px] text-amber-500 mt-2 font-mono uppercase tracking-widest">Model is currently in training phase. Responses may be degraded.</p>
                       )}
                     </div>
                   </>
@@ -947,8 +1435,8 @@ export default function SuperAI() {
 
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 {/* User List */}
-                <div className="md:col-span-2 bg-slate-900 border border-slate-800 rounded-lg overflow-hidden">
-                   <table className="w-full text-left text-xs">
+                <div className="md:col-span-2 bg-slate-900 border border-slate-800 rounded-lg overflow-x-auto">
+                   <table className="w-full text-left text-xs whitespace-nowrap">
                      <thead className="border-b border-slate-800 text-[10px] text-slate-500 uppercase tracking-widest bg-slate-900/50">
                        <tr>
                          <th className="px-4 py-3 font-medium">Team Member</th>
@@ -1329,6 +1817,43 @@ export default function SuperAI() {
                      Never share your API keys in public repositories or client-side code.
                    </div>
                  </div>
+
+                 {/* Security & Limits */}
+                 <div className="bg-slate-900 border border-slate-800 rounded-lg p-6">
+                   <h3 className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-4 flex items-center gap-2"><Lock className="w-4 h-4 text-amber-500" /> Security & Rate Limits</h3>
+                   <div className="space-y-6">
+                     <div>
+                       <label className="flex items-center justify-between mb-2">
+                         <span className="text-xs font-bold text-slate-300">IP Whitelisting</span>
+                         <div className="w-8 h-4 bg-emerald-500/20 rounded-full flex items-center p-0.5 border border-emerald-500/30">
+                           <div className="w-3 h-3 bg-emerald-400 rounded-full translate-x-4"></div>
+                         </div>
+                       </label>
+                       <p className="text-[10px] text-slate-500 font-mono mt-1 mb-3">Restrict API key usage to specific IP addresses or CIDR ranges.</p>
+                       <div className="flex gap-2">
+                         <input type="text" placeholder="e.g., 192.168.1.1/32" className="flex-1 bg-slate-950 border border-slate-800 rounded px-3 py-2 text-xs text-slate-200 focus:border-cyan-500 focus:outline-none font-mono" />
+                         <button className="px-4 py-2 bg-slate-800 hover:bg-slate-700 border border-slate-700 text-white rounded text-xs font-bold transition-colors">Add</button>
+                       </div>
+                       <div className="mt-3 flex flex-wrap gap-2">
+                         <span className="inline-flex items-center gap-1 bg-slate-950 border border-slate-800 px-2 py-1 rounded text-[10px] font-mono text-slate-400">
+                           203.0.113.45 <button className="hover:text-rose-400">&times;</button>
+                         </span>
+                       </div>
+                     </div>
+
+                     <div className="pt-4 border-t border-slate-800">
+                       <label className="flex items-center justify-between mb-2">
+                         <span className="text-xs font-bold text-slate-300">Rate Limiting</span>
+                         <span className="text-[10px] text-cyan-400 font-mono bg-cyan-900/30 px-2 py-0.5 rounded border border-cyan-800/50">Active</span>
+                       </label>
+                       <p className="text-[10px] text-slate-500 font-mono mt-1 mb-3">Prevent abuse by configuring maximum requests per minute (RPM).</p>
+                       <div className="flex items-center gap-4">
+                         <input type="range" min="10" max="1000" defaultValue="120" className="flex-1 accent-cyan-500" />
+                         <span className="text-xs font-mono font-bold text-slate-200 bg-slate-950 px-2 py-1 border border-slate-800 rounded">120 RPM</span>
+                       </div>
+                     </div>
+                   </div>
+                 </div>
                </div>
             </div>
           )}
@@ -1387,6 +1912,40 @@ export default function SuperAI() {
                     </div>
                     <div className="h-1.5 bg-slate-800 rounded-full overflow-hidden">
                       <div className="h-full bg-emerald-500 w-[28%]"></div>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="mt-6 pt-6 border-t border-slate-800">
+                  <h4 className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-4">Detailed GPU Status</h4>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="bg-slate-950 border border-slate-800 p-4 rounded-lg">
+                      <div className="flex justify-between items-center mb-4">
+                        <span className="text-xs font-bold text-slate-300 flex items-center gap-2"><Cpu className="w-3 h-3 text-cyan-500" /> GPU 0: NVIDIA A100</span>
+                        <span className="text-[10px] font-mono text-emerald-400 bg-emerald-900/30 px-2 py-0.5 rounded border border-emerald-800/50">68°C</span>
+                      </div>
+                      <div className="space-y-4">
+                        <div>
+                          <div className="flex justify-between text-[10px] uppercase font-bold tracking-wider mb-1">
+                            <span className="text-slate-500">Core Utilization</span>
+                            <span className="text-cyan-400 font-mono">72%</span>
+                          </div>
+                          <div className="h-1 bg-slate-800 rounded-full overflow-hidden"><div className="h-full bg-cyan-500 w-[72%]"></div></div>
+                        </div>
+                        <div>
+                          <div className="flex justify-between text-[10px] uppercase font-bold tracking-wider mb-1">
+                            <span className="text-slate-500">Memory Allocation</span>
+                            <span className="text-purple-400 font-mono">24GB / 40GB</span>
+                          </div>
+                          <div className="h-1 bg-slate-800 rounded-full overflow-hidden"><div className="h-full bg-purple-500 w-[60%]"></div></div>
+                        </div>
+                      </div>
+                    </div>
+                    <div className="bg-slate-950 border border-slate-800 p-4 rounded-lg flex flex-col justify-center items-center h-full min-h-[140px]">
+                      <div className="w-8 h-8 rounded-full border border-slate-700 bg-slate-900 flex items-center justify-center mb-2 text-slate-500 hover:bg-slate-800 transition-colors cursor-pointer">
+                        <Play className="w-4 h-4 ml-0.5" />
+                      </div>
+                      <p className="text-[10px] font-mono text-slate-500 uppercase tracking-widest">GPU 1 (Standby)</p>
                     </div>
                   </div>
                 </div>
@@ -1531,6 +2090,57 @@ export default function SuperAI() {
                     </div>
                   </div>
                 </div>
+
+                <div className="mt-6 pt-6 border-t border-slate-800">
+                  <h4 className="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-4">Detailed GPU Status</h4>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="bg-slate-950 border border-slate-800 p-4 rounded-lg">
+                      <div className="flex justify-between items-center mb-4">
+                        <span className="text-xs font-bold text-slate-300 flex items-center gap-2"><Cpu className="w-3 h-3 text-cyan-500" /> GPU 0: NVIDIA A100</span>
+                        <span className="text-[10px] font-mono text-emerald-400 bg-emerald-900/30 px-2 py-0.5 rounded border border-emerald-800/50">75°C</span>
+                      </div>
+                      <div className="space-y-4">
+                        <div>
+                          <div className="flex justify-between text-[10px] uppercase font-bold tracking-wider mb-1">
+                            <span className="text-slate-500">Core Utilization</span>
+                            <span className="text-cyan-400 font-mono">88%</span>
+                          </div>
+                          <div className="h-1 bg-slate-800 rounded-full overflow-hidden"><div className="h-full bg-cyan-500 w-[88%]"></div></div>
+                        </div>
+                        <div>
+                          <div className="flex justify-between text-[10px] uppercase font-bold tracking-wider mb-1">
+                            <span className="text-slate-500">Memory Allocation</span>
+                            <span className="text-purple-400 font-mono">35GB / 40GB</span>
+                          </div>
+                          <div className="h-1 bg-slate-800 rounded-full overflow-hidden"><div className="h-full bg-purple-500 w-[87%]"></div></div>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="bg-slate-950 border border-slate-800 p-4 rounded-lg">
+                      <div className="flex justify-between items-center mb-4">
+                        <span className="text-xs font-bold text-slate-300 flex items-center gap-2"><Cpu className="w-3 h-3 text-cyan-500" /> GPU 1: NVIDIA A100</span>
+                        <span className="text-[10px] font-mono text-amber-400 bg-amber-900/30 px-2 py-0.5 rounded border border-amber-800/50">82°C</span>
+                      </div>
+                      <div className="space-y-4">
+                        <div>
+                          <div className="flex justify-between text-[10px] uppercase font-bold tracking-wider mb-1">
+                            <span className="text-slate-500">Core Utilization</span>
+                            <span className="text-cyan-400 font-mono">94%</span>
+                          </div>
+                          <div className="h-1 bg-slate-800 rounded-full overflow-hidden"><div className="h-full bg-cyan-500 w-[94%]"></div></div>
+                        </div>
+                        <div>
+                          <div className="flex justify-between text-[10px] uppercase font-bold tracking-wider mb-1">
+                            <span className="text-slate-500">Memory Allocation</span>
+                            <span className="text-purple-400 font-mono">38GB / 40GB</span>
+                          </div>
+                          <div className="h-1 bg-slate-800 rounded-full overflow-hidden"><div className="h-full bg-purple-500 w-[95%]"></div></div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
               </div>
 
             </div>
@@ -1634,149 +2244,73 @@ export default function SuperAI() {
               <div className="space-y-6">
                 <div>
                   <h3 className="text-sm font-bold text-slate-300 uppercase tracking-widest mb-4 border-b border-slate-800 pb-2">Single Model Subscriptions</h3>
-                  <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-                    {/* MetaHuman */}
-                    <div className="bg-slate-900 border border-slate-800 rounded-lg p-6 flex flex-col items-center text-center">
-                      <div className="w-12 h-12 bg-orange-500/20 rounded-full flex items-center justify-center border border-orange-500/50 mb-4">
-                        <Layers className="w-6 h-6 text-orange-400" />
-                      </div>
-                      <h4 className="text-lg font-bold text-slate-200">MetaHuman</h4>
-                      <p className="text-xs text-slate-500 font-mono mt-1 mb-6">Ultra-realistic avatar rendering</p>
-                      
-                      <div className="space-y-3 w-full mt-auto">
-                        <button onClick={() => { if(!userSubscriptions.includes('metahuman')) setUserSubscriptions([...userSubscriptions, 'metahuman']); }} className={`w-full py-2 rounded text-xs font-bold transition-colors border ${userSubscriptions.includes('metahuman') ? 'bg-orange-500/20 text-orange-400 border-orange-500/50' : 'bg-slate-800 hover:bg-slate-700 text-slate-300 border-slate-700'}`}>
-                          {userSubscriptions.includes('metahuman') ? 'Active (Monthly)' : '$15 / Month'}
-                        </button>
-                        <button className="w-full py-2 rounded text-xs font-bold transition-colors border bg-slate-950 hover:bg-slate-900 text-slate-400 border-slate-800 disabled:opacity-50" disabled={userSubscriptions.includes('metahuman')}>
-                          $9 / Week
-                        </button>
-                        <button className="w-full py-2 rounded text-xs font-bold transition-colors border bg-slate-950 hover:bg-slate-900 text-slate-400 border-slate-800 disabled:opacity-50" disabled={userSubscriptions.includes('metahuman')}>
-                          $5 / Day
-                        </button>
-                      </div>
-                    </div>
-
-                    {/* Gaussian */}
-                    <div className="bg-slate-900 border border-slate-800 rounded-lg p-6 flex flex-col items-center text-center">
-                      <div className="w-12 h-12 bg-purple-500/20 rounded-full flex items-center justify-center border border-purple-500/50 mb-4">
-                        <Box className="w-6 h-6 text-purple-400" />
-                      </div>
-                      <h4 className="text-lg font-bold text-slate-200">Gaussian</h4>
-                      <p className="text-xs text-slate-500 font-mono mt-1 mb-6">3D Splatting & environmental mapping</p>
-                      
-                      <div className="space-y-3 w-full mt-auto">
-                        <button onClick={() => { if(!userSubscriptions.includes('gaussian')) setUserSubscriptions([...userSubscriptions, 'gaussian']); }} className={`w-full py-2 rounded text-xs font-bold transition-colors border ${userSubscriptions.includes('gaussian') ? 'bg-purple-500/20 text-purple-400 border-purple-500/50' : 'bg-slate-800 hover:bg-slate-700 text-slate-300 border-slate-700'}`}>
-                          {userSubscriptions.includes('gaussian') ? 'Active (Monthly)' : '$13 / Month'}
-                        </button>
-                        <button className="w-full py-2 rounded text-xs font-bold transition-colors border bg-slate-950 hover:bg-slate-900 text-slate-400 border-slate-800 disabled:opacity-50" disabled={userSubscriptions.includes('gaussian')}>
-                          $7 / Week
-                        </button>
-                        <button className="w-full py-2 rounded text-xs font-bold transition-colors border bg-slate-950 hover:bg-slate-900 text-slate-400 border-slate-800 disabled:opacity-50" disabled={userSubscriptions.includes('gaussian')}>
-                          $4 / Day
-                        </button>
-                      </div>
-                    </div>
-
-                    {/* GenVideo */}
-                    <div className="bg-slate-900 border border-slate-800 rounded-lg p-6 flex flex-col items-center text-center">
-                      <div className="w-12 h-12 bg-pink-500/20 rounded-full flex items-center justify-center border border-pink-500/50 mb-4">
-                        <Play className="w-6 h-6 text-pink-400" />
-                      </div>
-                      <h4 className="text-lg font-bold text-slate-200">Video</h4>
-                      <p className="text-xs text-slate-500 font-mono mt-1 mb-6">Temporal video generation models</p>
-                      
-                      <div className="space-y-3 w-full mt-auto">
-                        <button onClick={() => { if(!userSubscriptions.includes('genvideo')) setUserSubscriptions([...userSubscriptions, 'genvideo']); }} className={`w-full py-2 rounded text-xs font-bold transition-colors border ${userSubscriptions.includes('genvideo') ? 'bg-pink-500/20 text-pink-400 border-pink-500/50' : 'bg-slate-800 hover:bg-slate-700 text-slate-300 border-slate-700'}`}>
-                          {userSubscriptions.includes('genvideo') ? 'Active (Monthly)' : '$10 / Month'}
-                        </button>
-                        <button className="w-full py-2 rounded text-xs font-bold transition-colors border bg-slate-950 hover:bg-slate-900 text-slate-400 border-slate-800 disabled:opacity-50" disabled={userSubscriptions.includes('genvideo')}>
-                          $6 / Week
-                        </button>
-                        <button className="w-full py-2 rounded text-xs font-bold transition-colors border bg-slate-950 hover:bg-slate-900 text-slate-400 border-slate-800 disabled:opacity-50" disabled={userSubscriptions.includes('genvideo')}>
-                          $1.50 / Day
-                        </button>
-                      </div>
-                    </div>
-                    
-                    {/* Glypheral */}
-                    <div className="bg-slate-900 border border-slate-800 rounded-lg p-6 flex flex-col items-center text-center">
-                      <div className="w-12 h-12 bg-yellow-500/20 rounded-full flex items-center justify-center border border-yellow-500/50 mb-4">
-                        <Box className="w-6 h-6 text-yellow-400" />
-                      </div>
-                      <h4 className="text-lg font-bold text-slate-200">Glypheral</h4>
-                      <p className="text-xs text-slate-500 font-mono mt-1 mb-6">Advanced data quantization glyphs</p>
-                      
-                      <div className="space-y-3 w-full mt-auto">
-                        <button onClick={() => { if(!userSubscriptions.includes('glypheral')) setUserSubscriptions([...userSubscriptions, 'glypheral']); }} className={`w-full py-2 rounded text-xs font-bold transition-colors border ${userSubscriptions.includes('glypheral') ? 'bg-yellow-500/20 text-yellow-400 border-yellow-500/50' : 'bg-slate-800 hover:bg-slate-700 text-slate-300 border-slate-700'}`}>
-                          {userSubscriptions.includes('glypheral') ? 'Active (Monthly)' : '$35 / Month'}
-                        </button>
-                        <button className="w-full py-2 rounded text-xs font-bold transition-colors border bg-slate-950 hover:bg-slate-900 text-slate-400 border-slate-800 disabled:opacity-50" disabled={userSubscriptions.includes('glypheral')}>
-                          $22 / Week
-                        </button>
-                        <button className="w-full py-2 rounded text-xs font-bold transition-colors border bg-slate-950 hover:bg-slate-900 text-slate-400 border-slate-800 disabled:opacity-50" disabled={userSubscriptions.includes('glypheral')}>
-                          $16 / Day
-                        </button>
-                      </div>
-                    </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                    <SubscriptionCard 
+                      id="metahuman" name="MetaHuman" description="Ultra-realistic avatar rendering" 
+                      icon={Layers} colorIcon={{bg: 'bg-orange-500/20', border: 'border-orange-500/50', text: 'text-orange-400'}} 
+                      priceObj={{monthly: '$15 / Month', weekly: '$9 / Week', daily: '$5 / Day'}} 
+                      isSubscribed={userSubscriptions.includes('metahuman')} 
+                      onSubscribeClick={() => setPendingSubscription({id: 'metahuman', name: 'MetaHuman', pricing: '$15 / Month'})} 
+                    />
+                    <SubscriptionCard 
+                      id="gaussian" name="Gaussian" description="3D Splatting & environmental mapping" 
+                      icon={Box} colorIcon={{bg: 'bg-purple-500/20', border: 'border-purple-500/50', text: 'text-purple-400'}} 
+                      priceObj={{monthly: '$13 / Month', weekly: '$7 / Week', daily: '$4 / Day'}} 
+                      isSubscribed={userSubscriptions.includes('gaussian')} 
+                      onSubscribeClick={() => setPendingSubscription({id: 'gaussian', name: 'Gaussian', pricing: '$13 / Month'})} 
+                    />
+                    <SubscriptionCard 
+                      id="genvideo" name="Video" description="Temporal video generation models" 
+                      icon={Play} colorIcon={{bg: 'bg-pink-500/20', border: 'border-pink-500/50', text: 'text-pink-400'}} 
+                      priceObj={{monthly: '$10 / Month', weekly: '$6 / Week', daily: '$1.50 / Day'}} 
+                      isSubscribed={userSubscriptions.includes('genvideo')} 
+                      onSubscribeClick={() => setPendingSubscription({id: 'genvideo', name: 'Video', pricing: '$10 / Month'})} 
+                    />
+                    <SubscriptionCard 
+                      id="glypheral" name="Glypheral" description="Advanced data quantization glyphs" 
+                      icon={Box} colorIcon={{bg: 'bg-yellow-500/20', border: 'border-yellow-500/50', text: 'text-yellow-400'}} 
+                      priceObj={{monthly: '$35 / Month', weekly: '$22 / Week', daily: '$16 / Day'}} 
+                      isSubscribed={userSubscriptions.includes('glypheral')} 
+                      onSubscribeClick={() => setPendingSubscription({id: 'glypheral', name: 'Glypheral', pricing: '$35 / Month'})} 
+                    />
                   </div>
                 </div>
 
                 <div>
                   <h3 className="text-sm font-bold text-slate-300 uppercase tracking-widest mb-4 border-b border-slate-800 pb-2 flex items-center gap-2"><Lock className="w-4 h-4 text-cyan-400" /> Package Access</h3>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    {/* Ultra Package */}
-                    <div className="bg-gradient-to-br from-indigo-900/40 to-slate-900 border border-indigo-500/30 rounded-lg p-6 flex flex-col justify-between gap-6">
-                      <div className="flex-1">
-                        <h4 className="text-xl font-bold text-white mb-2">Ultra Package</h4>
-                        <p className="text-slate-400 text-sm mb-4">Unrestricted access to all MetaHuman, Gaussian, and Video datasets alongside unlimited model initializations.</p>
-                        <ul className="text-xs font-mono text-cyan-300 space-y-1">
-                          <li>• All restricted data sets</li>
-                          <li>• Priority training cluster</li>
-                          <li>• Dedicated V-Node allocation</li>
-                        </ul>
-                      </div>
-                      <div className="flex flex-col gap-3">
-                        <button onClick={() => { if(!userSubscriptions.includes('ultra')) setUserSubscriptions(['ultra', 'metahuman', 'gaussian', 'genvideo']); }} className={`w-full py-3 rounded text-sm font-bold uppercase tracking-widest transition-colors ${userSubscriptions.includes('ultra') ? 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/50' : 'bg-cyan-600 hover:bg-cyan-500 text-white'}`}>
-                          {userSubscriptions.includes('ultra') ? 'Package Active' : '$40 / Month'}
-                        </button>
-                        <button className="w-full py-2 rounded text-xs font-bold transition-colors border bg-slate-900 hover:bg-slate-800 text-slate-400 border-slate-700 disabled:opacity-50" disabled={userSubscriptions.includes('ultra')}>
-                          $32 / Week
-                        </button>
-                        <button className="w-full py-2 rounded text-xs font-bold transition-colors border bg-slate-900 hover:bg-slate-800 text-slate-400 border-slate-700 disabled:opacity-50" disabled={userSubscriptions.includes('ultra')}>
-                          $20 / Day
-                        </button>
-                      </div>
-                    </div>
-
-                    {/* Ultramite Package */}
-                    <div className="bg-gradient-to-br from-fuchsia-900/40 to-slate-900 border border-fuchsia-500/30 rounded-lg p-6 flex flex-col justify-between gap-6">
-                      <div className="flex-1">
-                        <h4 className="text-xl font-bold text-white mb-2">Ultramite Package</h4>
-                        <p className="text-slate-400 text-sm mb-4">Complete access including Glypheral features, combining all 4 dataset types and their respective model classes.</p>
-                        <ul className="text-xs font-mono text-fuchsia-300 space-y-1">
-                          <li>• Complete data lake access</li>
-                          <li>• Enterprise training cluster</li>
-                          <li>• Maximum GPU/V-Node allocation</li>
-                        </ul>
-                      </div>
-                      <div className="flex flex-col gap-3">
-                        <button onClick={() => { if(!userSubscriptions.includes('ultramite')) setUserSubscriptions(['ultramite', 'metahuman', 'gaussian', 'genvideo', 'glypheral']); }} className={`w-full py-3 rounded text-sm font-bold uppercase tracking-widest transition-colors ${userSubscriptions.includes('ultramite') ? 'bg-fuchsia-500/20 text-fuchsia-400 border border-fuchsia-500/50' : 'bg-fuchsia-600 hover:bg-fuchsia-500 text-white'}`}>
-                          {userSubscriptions.includes('ultramite') ? 'Package Active' : '$80 / Month'}
-                        </button>
-                        <button className="w-full py-2 rounded text-xs font-bold transition-colors border bg-slate-900 hover:bg-slate-800 text-slate-400 border-slate-700 disabled:opacity-50" disabled={userSubscriptions.includes('ultramite')}>
-                          $44 / Week
-                        </button>
-                        <button className="w-full py-2 rounded text-xs font-bold transition-colors border bg-slate-900 hover:bg-slate-800 text-slate-400 border-slate-700 disabled:opacity-50" disabled={userSubscriptions.includes('ultramite')}>
-                          $25 / Day
-                        </button>
-                      </div>
-                    </div>
+                    <SubscriptionCard 
+                      id="ultra" name="Ultra Package" description="Unrestricted access to all MetaHuman, Gaussian, and Video datasets alongside unlimited model initializations." 
+                      icon={Star} colorIcon={{bg: 'bg-cyan-500/20', border: 'border-cyan-500/50', text: 'text-cyan-400', bgActive: 'bg-cyan-600'}} 
+                      priceObj={{monthly: '$40 / Month', weekly: '$32 / Week', daily: '$20 / Day'}} 
+                      isSubscribed={userSubscriptions.includes('ultra')} isPackage
+                      onSubscribeClick={() => setPendingSubscription({id: 'ultra,metahuman,gaussian,genvideo', name: 'Ultra Package', pricing: '$40 / Month'})} 
+                    />
+                    <SubscriptionCard 
+                      id="ultramite" name="Ultramite Package" description="Complete access including Glypheral features, combining all 4 dataset types and their respective model classes." 
+                      icon={Star} colorIcon={{bg: 'bg-fuchsia-500/20', border: 'border-fuchsia-500/50', text: 'text-fuchsia-400', bgActive: 'bg-fuchsia-600'}} 
+                      priceObj={{monthly: '$80 / Month', weekly: '$44 / Week', daily: '$25 / Day'}} 
+                      isSubscribed={userSubscriptions.includes('ultramite')} isPackage
+                      onSubscribeClick={() => setPendingSubscription({id: 'ultramite,metahuman,gaussian,genvideo,glypheral', name: 'Ultramite Package', pricing: '$80 / Month'})} 
+                    />
                   </div>
                 </div>
               </div>
             </div>
           )}
         </div>
+        
+        <SubscriptionConfirmationModal 
+           isOpen={!!pendingSubscription} 
+           item={pendingSubscription} 
+           onConfirm={handleConfirmSubscription} 
+           isLoading={isSubscribing}
+           error={subscriptionError}
+           onCancel={() => {
+             setPendingSubscription(null);
+             setSubscriptionError('');
+           }} 
+        />
         
         {/* Bottom Status Bar */}
         <footer className="h-8 border-t border-slate-800 bg-slate-900 flex items-center justify-between px-4 shrink-0 text-[10px] font-mono">
@@ -1796,6 +2330,90 @@ export default function SuperAI() {
             </div>
           </div>
         </footer>
+
+        {/* Marketplace Publish Modal */}
+        {showMarketplaceModal && (
+          <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
+            <div className="bg-slate-900 border border-slate-800 rounded-lg p-6 max-w-md w-full shadow-2xl">
+              <div className="flex justify-between items-center mb-6">
+                <h2 className="text-lg font-bold text-white flex items-center gap-2"><Store className="w-5 h-5 text-emerald-400" /> Publish to Marketplace</h2>
+                <button 
+                  onClick={() => { setShowMarketplaceModal(null); setPublishError(''); }} 
+                  className="text-slate-500 hover:text-white transition-colors"
+                  disabled={isPublishing}
+                >
+                  &times;
+                </button>
+              </div>
+              <div className="space-y-4">
+                <p className="text-xs text-slate-400 leading-relaxed font-mono mb-4">
+                  Publishing this custom model will make it available to the SuperAI community. You will receive 75% of the sales, with a 25% tax allocated to platform services and developer updates.
+                </p>
+                <div>
+                  <label className="block text-[10px] font-mono text-slate-400 uppercase mb-1">Selling Price (USD)</label>
+                  <input type="number" 
+                         value={publishForm.price} 
+                         disabled={isPublishing}
+                         onChange={(e) => setPublishForm({...publishForm, price: parseFloat(e.target.value)})}
+                         className="w-full bg-slate-950 border border-slate-700 rounded px-3 py-2 text-xs text-slate-200 focus:border-cyan-500 focus:outline-none" />
+                </div>
+                <div>
+                  <label className="block text-[10px] font-mono text-slate-400 uppercase mb-1">Model Description</label>
+                  <textarea rows={4}
+                            value={publishForm.description}
+                            disabled={isPublishing}
+                            onChange={(e) => setPublishForm({...publishForm, description: e.target.value})}
+                            className="w-full bg-slate-950 border border-slate-700 rounded px-3 py-2 text-xs text-slate-200 focus:border-cyan-500 focus:outline-none resize-none"
+                            placeholder="Describe what your model excels at..."></textarea>
+                </div>
+
+                {publishError && <p className="text-red-400 text-xs font-mono">{publishError}</p>}
+                
+                <div className="flex justify-end gap-3 pt-4 border-t border-slate-800 relative z-10">
+                  <button 
+                    disabled={isPublishing}
+                    onClick={() => { setShowMarketplaceModal(null); setPublishError(''); }} 
+                    className="px-4 py-2 hover:bg-slate-800 text-slate-400 rounded text-xs font-bold transition-colors disabled:opacity-50"
+                  >
+                    Cancel
+                  </button>
+                  <button onClick={() => {
+                     setPublishError('');
+                     if (publishForm.price < 0) {
+                        setPublishError('Price must be greater than or equal to 0.');
+                        return;
+                     }
+                     if (publishForm.description.trim().length < 10) {
+                        setPublishError('Description must be at least 10 characters.');
+                        return;
+                     }
+                     setIsPublishing(true);
+                     setTimeout(() => {
+                         setIsPublishing(false);
+                         const m = models.find(x => x.id === showMarketplaceModal);
+                         if (m) {
+                            setMarketplaceModels([...marketplaceModels, {
+                               id: Date.now(),
+                               name: m.name,
+                               author: currentUsername || 'Unknown',
+                               type: m.type,
+                               price: publishForm.price,
+                               rating: 0,
+                               description: publishForm.description,
+                               reviews: []
+                            }]);
+                            setShowMarketplaceModal(null);
+                            setActiveTab('marketplace');
+                         }
+                     }, 1500);
+                  }} className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 disabled:bg-emerald-800 disabled:text-emerald-400/50 text-white rounded text-xs font-bold uppercase tracking-widest transition-colors flex items-center">
+                    {isPublishing ? <><RefreshCw className="w-3 h-3 mr-2 animate-spin" /> Publishing...</> : <><CheckCircle2 className="w-4 h-4 mr-2" /> Publish Model</>}
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
       </main>
     </div>
   );
